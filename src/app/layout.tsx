@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Sora, Manrope } from "next/font/google"
+import { Suspense } from "react"
 import "./globals.css"
+import { EarlyAccessProvider } from "@/components/early-access/early-access-provider"
 import { AppShell } from "@/components/layout/app-shell"
 
 const displayFont = Sora({
@@ -21,6 +23,10 @@ export const metadata: Metadata = {
   title: "Soroz AI — The Sound of Balochistan, Generated",
   description:
     "Create and discover Balochi music powered by AI. Traditional instruments, native vocal style, multiple dialects.",
+  icons: {
+    icon: "/logo/logo.png",
+    apple: "/logo/logo.png",
+  },
 }
 
 export default function RootLayout({
@@ -34,7 +40,11 @@ export default function RootLayout({
       className={`${displayFont.variable} ${bodyFont.variable}`}
     >
       <body>
-        <AppShell>{children}</AppShell>
+        <Suspense fallback={null}>
+          <EarlyAccessProvider>
+            <AppShell>{children}</AppShell>
+          </EarlyAccessProvider>
+        </Suspense>
       </body>
     </html>
   )

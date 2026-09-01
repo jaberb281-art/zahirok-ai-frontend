@@ -232,6 +232,9 @@ function PublicSongsSection({ profile }: { profile: PublicProfile }) {
         <ChevronRight className="size-5 text-sand/60" aria-hidden="true" />
       </h2>
 
+      {profile.songs.length === 0 ? (
+        <p className="mt-4 text-sm font-semibold text-sand/48">No songs yet</p>
+      ) : (
       <div className="mt-4 grid gap-1.5 md:grid-cols-2 md:gap-x-6 xl:grid-cols-3">
         {profile.songs.map((song) => (
           <button
@@ -268,6 +271,7 @@ function PublicSongsSection({ profile }: { profile: PublicProfile }) {
           </button>
         ))}
       </div>
+      )}
     </section>
   )
 }
@@ -279,6 +283,9 @@ function PublicPlaylistsSection({ profile }: { profile: PublicProfile }) {
         Playlists
         <ChevronRight className="size-5 text-sand/60" aria-hidden="true" />
       </h2>
+      {profile.playlists.length === 0 ? (
+        <p className="mt-4 text-sm font-semibold text-sand/48">No playlists yet</p>
+      ) : (
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:flex-wrap lg:gap-5">
         {profile.playlists.map((playlist) => (
           <button
@@ -301,6 +308,7 @@ function PublicPlaylistsSection({ profile }: { profile: PublicProfile }) {
           </button>
         ))}
       </div>
+      )}
     </section>
   )
 }
@@ -338,13 +346,9 @@ function PublicAboutSection({
         </button>
 
         <div className="mx-auto mt-5 max-w-md">
-          {profile.bio ? (
-            <p className="text-sm font-bold leading-6 text-sand/72">{profile.bio}</p>
-          ) : (
-            <p className="text-sm font-bold leading-6 text-sand/56">
-              Soroz creator exploring Balochi melodies, hooks, and modern production.
-            </p>
-          )}
+          <p className="text-sm font-bold leading-6 text-sand/58">
+            {profile.bio || "No bio added yet"}
+          </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {profile.tags.map((tag) => (
               <span

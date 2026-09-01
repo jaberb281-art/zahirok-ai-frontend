@@ -26,6 +26,8 @@ import {
     X,
 } from "lucide-react"
 
+import { BrandLogo } from "@/components/brand-logo"
+
 type NavItem = {
     href: string
     label: string
@@ -216,9 +218,9 @@ export function AppSidebar() {
                                 href="/dashboard"
                                 aria-label="Soroz AI home"
                                 title="Soroz"
-                                className="flex size-10 items-center justify-center rounded-xl border border-saffron/25 bg-saffron/10 text-saffron shadow-[0_0_16px_rgba(227,122,44,0.12)] transition hover:bg-saffron/15"
+                                className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-saffron/25 bg-black/40 shadow-[0_0_16px_rgba(227,122,44,0.12)] transition hover:border-saffron/40"
                             >
-                                <Music className="size-[19px]" aria-hidden={true} />
+                                <BrandLogo variant="mark" className="size-10" />
                             </Link>
                             <button
                                 type="button"
@@ -233,13 +235,8 @@ export function AppSidebar() {
                         </div>
                     ) : (
                         <div className="flex h-[72px] items-center justify-between">
-                            <Link href="/dashboard" className="flex items-center gap-2" aria-label="Soroz AI home">
-                                <span className="flex size-[32px] items-center justify-center rounded-full border border-saffron/25 bg-saffron/10 text-saffron shadow-[0_0_16px_rgba(227,122,44,0.12)]">
-                                    <Music className="size-[17px]" aria-hidden={true} />
-                                </span>
-                                <span className="text-[1.1rem] font-extrabold uppercase leading-none tracking-[0.06em] text-white">
-                                    Soroz
-                                </span>
+                            <Link href="/dashboard" className="flex min-w-0 items-center" aria-label="Soroz AI home">
+                                <BrandLogo className="h-8 w-auto" />
                             </Link>
                             <button
                                 type="button"

@@ -1,5 +1,7 @@
 import Link from "next/link"
-import { ArrowLeft, Music } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
+
+import { BrandLogo } from "@/components/brand-logo"
 
 type AuthShellProps = {
   children: React.ReactNode
@@ -23,13 +25,8 @@ export function AuthShell({ children }: AuthShellProps) {
             Back to home
           </Link>
 
-          <div className="mt-7 flex items-center justify-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-full border border-saffron/30 bg-saffron/15 text-saffron shadow-[0_0_24px_rgba(227,122,44,0.22)]">
-              <Music className="size-5" aria-hidden="true" />
-            </span>
-            <span className="text-sm font-black uppercase tracking-[0.28em]">
-              SOROZ AI
-            </span>
+          <div className="mt-7 flex items-center justify-center">
+            <BrandLogo className="h-10 w-auto" />
           </div>
 
           <div className="mt-5">{children}</div>

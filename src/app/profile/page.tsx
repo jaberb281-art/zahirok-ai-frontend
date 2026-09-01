@@ -100,15 +100,11 @@ const CIRCLE_TABS = ["Followers", "Following", "Remixes Inspired"] as const
 type CircleTab = (typeof CIRCLE_TABS)[number]
 
 function getProfileUrl(handle: string) {
-  if (typeof window === "undefined") {
-    return `https://zahirok.ai/${handle}`
-  }
+  const slug = handle.replace(/^@/, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "")
+  const origin =
+    typeof window === "undefined" ? "https://zahirok.ai" : window.location.origin
 
-  const isLocal =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-
-  return isLocal ? `${window.location.origin}/profile` : `https://zahirok.ai/${handle}`
+  return `${origin}/profile/${slug}`
 }
 
 export default function ProfilePage() {

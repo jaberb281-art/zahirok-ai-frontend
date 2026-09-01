@@ -23,8 +23,6 @@ export type MockSong = Song & {
     badge?: string
     /** Optional cover art image path (relative to /public) */
     coverImage?: string
-    /** Optional hook thumbnail image path */
-    hookThumbnail?: string
 }
 
 // ── All mock songs ──────────────────────────────────────────────────────────
@@ -56,7 +54,6 @@ const ALL_SONGS: MockSong[] = [
         coverClass:
             "bg-[linear-gradient(135deg,rgba(18,80,86,0.92),rgba(18,18,22,0.98)),radial-gradient(circle_at_36%_30%,rgba(237,227,211,0.62),transparent_22%)]",
         coverImage: "/covers/makran-evening.png",
-        hookThumbnail: "/hooks/makran-evening-hook-thumb.png",
     },
     {
         id: "song-sufi-breath",
@@ -83,7 +80,6 @@ const ALL_SONGS: MockSong[] = [
         coverClass:
             "bg-[linear-gradient(135deg,rgba(57,30,100,0.78),rgba(12,12,15,0.96)),radial-gradient(circle_at_45%_42%,rgba(227,122,44,0.65),transparent_22%)]",
         coverImage: "/covers/sufi-dambora.png",
-        hookThumbnail: "/hooks/sufi-dambora-hook-thumb.png",
     },
     {
         id: "song-wedding-doholl",
@@ -110,7 +106,6 @@ const ALL_SONGS: MockSong[] = [
         coverClass:
             "bg-[linear-gradient(135deg,rgba(183,62,31,0.64),rgba(22,18,28,0.95)),radial-gradient(circle_at_42%_35%,rgba(237,227,211,0.5),transparent_20%)]",
         coverImage: "/covers/wedding-doholl.png",
-        hookThumbnail: "/hooks/wedding-doholl-hook-thumb.png",
     },
     {
         id: "song-desert-pulse",
@@ -241,7 +236,7 @@ const ALL_SONGS: MockSong[] = [
             "bg-[linear-gradient(160deg,rgba(183,62,31,0.64),rgba(22,18,28,0.95)),radial-gradient(circle_at_42%_35%,rgba(237,227,211,0.5),transparent_20%)]",
     },
     {
-        id: "song-coastal-zahirok",
+        id: "song-coastal-soroz",
         title: "Coastal Soroz",
         prompt: "A coastal Soroz melody with Rubab and Doholl.",
         genrePreset: "Soroz",
@@ -720,6 +715,31 @@ const ALL_SONGS: MockSong[] = [
             "bg-[radial-gradient(circle_at_50%_48%,rgba(227,122,44,0.95)_0%,rgba(20,190,185,0.65)_12%,rgba(33,20,36,0.94)_36%,rgba(10,16,18,1)_100%)]",
     },
 ]
+
+// ── Real sample audio ────────────────────────────────────────────────────────
+// MOCK: real, CORS-enabled sample tracks (served from jsdelivr) so the
+// Howler-backed player is testable end-to-end. CORS matters here so the
+// WaveSurfer visualizer can also fetch peaks. Replace with real
+// generated/stored audio when the backend ships.
+const SAMPLE_AUDIO_URLS = [
+    "https://cdn.jsdelivr.net/gh/mdn/webaudio-examples/audio-basics/outfoxing.mp3",
+    "https://cdn.jsdelivr.net/gh/mdn/webaudio-examples/audio-analyser/viper.mp3",
+    "https://cdn.jsdelivr.net/gh/katspaugh/wavesurfer.js@7/examples/audio/stereo.mp3",
+] as const
+
+/** Pick a sample audio URL by index, round-robin over the shared source. */
+export function sampleAudioUrl(index: number): string {
+    return SAMPLE_AUDIO_URLS[Math.abs(Math.trunc(index)) % SAMPLE_AUDIO_URLS.length]
+}
+
+// Assign sample audio round-robin so adjacent tracks differ (useful for testing
+// next/prev). mp3Url drives playback; wavUrl mirrors it for the mock download UI.
+ALL_SONGS.forEach((song, index) => {
+    const url = SAMPLE_AUDIO_URLS[index % SAMPLE_AUDIO_URLS.length]
+    song.audioUrl = url
+    song.mp3Url = url
+    song.wavUrl = url
+})
 
 // ── Index for O(1) lookup ───────────────────────────────────────────────────
 

@@ -34,6 +34,11 @@
   --app-desktop-bottom-safe-area: var(--app-bottom-player-height);
 }
 
+[data-has-bottom-player="true"][data-bottom-player-active="false"] {
+  --app-bottom-safe-area: var(--app-mobile-tab-bar-height);
+  --app-desktop-bottom-safe-area: 0px;
+}
+
 [data-has-mobile-tab-bar="false"] {
   --app-mobile-tab-bar-height: env(safe-area-inset-bottom);
   --app-bottom-player-offset: env(safe-area-inset-bottom);
@@ -46,6 +51,10 @@
 
   [data-has-bottom-player="true"] {
     --app-bottom-safe-area: var(--app-bottom-player-height);
+  }
+
+  [data-has-bottom-player="true"][data-bottom-player-active="false"] {
+    --app-bottom-safe-area: 0px;
   }
 }
 

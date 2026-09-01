@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useMemo } from "react"
 import Link from "next/link"
 import {
     Pause,
@@ -56,20 +56,6 @@ function TrackArtwork({ song }: { song: Song }) {
     )
 }
 
-function parseDurationSeconds(duration?: string): number | null {
-    if (!duration) return null
-
-    const [minutes, seconds] = duration.split(":").map(Number)
-
-    if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) {
-        return null
-    }
-
-    const totalSeconds = minutes * 60 + seconds
-
-    return totalSeconds > 0 ? totalSeconds : null
-}
-
 function formatClock(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = Math.floor(totalSeconds % 60)
@@ -81,6 +67,7 @@ export function BottomPlayer() {
         currentSong,
         isPlaying,
         progress,
+        duration,
         volume,
         pause,
         resume,
@@ -91,43 +78,18 @@ export function BottomPlayer() {
         playPrev,
     } = usePlayerStore()
 
-    const totalSeconds = parseDurationSeconds(currentSong?.duration)
-    const hasTimedDuration = totalSeconds !== null
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-    useEffect(() => {
-        if (isPlaying && currentSong) {
-            intervalRef.current = setInterval(() => {
-                const current = usePlayerStore.getState().progress
-
-                if (!hasTimedDuration) {
-                    setProgress(current >= 100 ? 0 : current + 0.2)
-                    return
-                }
-
-                if (current >= 100) {
-                    clearInterval(intervalRef.current!)
-                    usePlayerStore.getState().playNext()
-                    return
-                }
-
-                setProgress(current + 0.25)
-            }, 100)
-        } else if (intervalRef.current) {
-            clearInterval(intervalRef.current)
-        }
-
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current)
-        }
-    }, [currentSong, hasTimedDuration, isPlaying, setProgress])
-
+    // Progress, elapsed time, and total duration are all driven by the real
+    // Howler engine in the store — there is no simulated ticking here.
     const safeProgress = Number.isFinite(progress) ? progress : 0
-    const elapsedSeconds = hasTimedDuration
-        ? Math.floor((safeProgress / 100) * (totalSeconds ?? 0))
-        : 0
+    const isStation = currentSong?.id.startsWith("station-") ?? false
+    const hasTimedDuration = !isStation && duration > 0
+    const elapsedSeconds = hasTimedDuration ? (safeProgress / 100) * duration : 0
     const elapsedLabel = hasTimedDuration ? formatClock(elapsedSeconds) : "0:00"
-    const durationLabel = hasTimedDuration ? currentSong?.duration ?? "0:00" : "Live"
+    const durationLabel = isStation
+        ? "Live"
+        : hasTimedDuration
+          ? formatClock(duration)
+          : "0:00"
 
     const songPath = currentSong?.id.startsWith("station-")
         ? "/radio"
@@ -148,6 +110,18 @@ export function BottomPlayer() {
 
     return (
         <div className="player-bar bottom-player fixed bottom-[var(--app-bottom-player-offset)] left-0 right-0 z-[100] h-[var(--app-bottom-player-height)] bg-[rgba(10,10,10,0.95)] backdrop-blur-[20px] transition-[bottom,left] duration-200 lg:bottom-0 lg:left-[var(--app-sidebar-width,248px)]">
+            {/* Mobile: passive progress hairline along the top edge (no seek/thumb). */}
+            <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-white/10 lg:hidden"
+            >
+                <div
+                    className="player-progress-fill h-full bg-saffron transition-[width] duration-100 ease-linear"
+                    style={{ width: `${safeProgress}%` }}
+                />
+            </div>
+
+            {/* Desktop: interactive seek bar (unchanged). */}
             <div
                 role="slider"
                 aria-label="Playback progress"
@@ -156,7 +130,7 @@ export function BottomPlayer() {
                 aria-valuenow={Math.round(safeProgress)}
                 aria-valuetext={`${elapsedLabel} of ${durationLabel}`}
                 tabIndex={0}
-                className="player-progress-track absolute inset-x-0 top-0 h-[2px] cursor-pointer bg-white/10"
+                className="player-progress-track absolute inset-x-0 top-0 hidden h-[2px] cursor-pointer bg-white/10 lg:block"
                 onClick={handleProgressSeek}
                 onKeyDown={(event) => {
                     if (event.key === "ArrowRight") {
@@ -174,8 +148,8 @@ export function BottomPlayer() {
             </div>
 
             <div className="mx-auto flex h-full max-w-7xl flex-nowrap items-center gap-4 px-4">
-                {/* Left — track info */}
-                <div className="flex min-w-[180px] shrink-0 items-center gap-2.5">
+                {/* Left — track info (takes the available width on mobile) */}
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:min-w-[180px] lg:flex-none lg:shrink-0">
                     <Link
                         href={songPath}
                         aria-label="Open track"
@@ -196,8 +170,8 @@ export function BottomPlayer() {
                     </Link>
                 </div>
 
-                {/* Center — transport */}
-                <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-5">
+                {/* Center — transport (full set on desktop; play/pause + next on mobile) */}
+                <div className="flex min-w-0 flex-nowrap items-center justify-center gap-3 lg:flex-1 lg:gap-5">
                     <button
                         type="button"
                         onClick={playPrev}
@@ -229,13 +203,13 @@ export function BottomPlayer() {
                         <SkipForward className="size-4" aria-hidden="true" />
                     </button>
 
-                    <span className="shrink-0 text-[11px] tabular-nums text-white/40">
+                    <span className="hidden shrink-0 text-[11px] tabular-nums text-white/40 lg:inline">
                         {elapsedLabel} / {durationLabel}
                     </span>
                 </div>
 
-                {/* Right — volume + close */}
-                <div className="flex shrink-0 flex-nowrap items-center gap-3">
+                {/* Right — volume + close (desktop only) */}
+                <div className="hidden shrink-0 flex-nowrap items-center gap-3 lg:flex">
                     <button
                         type="button"
                         onClick={() => setVolume(volume === 0 ? 0.8 : 0)}

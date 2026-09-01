@@ -8,7 +8,6 @@ import {
     Compass,
     CreditCard,
     Home,
-    Music2,
     Plus,
     Radio,
     SlidersHorizontal,
@@ -16,6 +15,9 @@ import {
     UserRound,
     Wand2,
 } from "lucide-react"
+
+import { BrandLogo } from "@/components/brand-logo"
+import { GatedLink } from "@/components/early-access/gated-link"
 
 type RailItem = {
     href: string
@@ -102,23 +104,15 @@ export function StudioRail() {
     return (
         <aside className="app-sidebar fixed inset-y-0 left-0 z-[90] hidden h-screen w-[248px] border-e border-white/[0.1] bg-[#11100f] text-sand shadow-[18px_0_60px_rgba(0,0,0,0.18)] lg:flex">
             <div className="flex h-full min-h-0 w-full flex-col px-3 py-3">
-                <Link
+                <GatedLink
                     href="/dashboard"
                     aria-label="Studio"
-                    className="group flex min-h-14 items-center gap-3 rounded-lg px-2 transition hover:bg-white/[0.035] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+                    className="group flex min-h-14 items-center rounded-lg px-2 transition hover:bg-white/[0.035] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
                 >
-                    <span className="relative flex size-11 shrink-0 items-center justify-center rounded-lg border border-saffron/24 bg-[#1a1714] text-saffron shadow-[0_0_0_1px_rgba(227,122,44,0.08)]">
-                        <Music2 className="size-[21px]" aria-hidden={true} />
-                        <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-saffron shadow-[0_0_12px_rgba(227,122,44,0.72)]" />
-                    </span>
-                    <span className="min-w-0">
-                        <span className="block text-[1.05rem] font-black uppercase leading-none tracking-[0.08em] text-white">
-                            Soroz
-                        </span>
-                    </span>
-                </Link>
+                    <BrandLogo className="h-9 w-auto" />
+                </GatedLink>
 
-                <Link
+                <GatedLink
                     href="/create"
                     aria-current={createSongActive ? "page" : undefined}
                     aria-label="+ Create Song"
@@ -130,7 +124,7 @@ export function StudioRail() {
                 >
                     <Plus className="size-4 shrink-0 stroke-[3]" aria-hidden={true} />
                     <span>Create Song</span>
-                </Link>
+                </GatedLink>
 
                 <nav
                     aria-label="Studio navigation"
@@ -171,7 +165,7 @@ export function StudioRail() {
                         </Link>
                     </div>
 
-                    <Link
+                    <GatedLink
                         href="/profile"
                         className="mt-3 flex h-12 items-center gap-3 rounded-lg px-2 transition hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
                     >
@@ -186,7 +180,7 @@ export function StudioRail() {
                                 {USER.tier}
                             </span>
                         </span>
-                    </Link>
+                    </GatedLink>
                 </div>
             </div>
         </aside>
@@ -203,7 +197,7 @@ function RailLink({
     const Icon = item.icon
 
     return (
-        <Link
+        <GatedLink
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-2.5 text-[14px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron ${
@@ -219,6 +213,6 @@ function RailLink({
                 aria-hidden={true}
             />
             <span className="min-w-0 truncate">{item.label}</span>
-        </Link>
+        </GatedLink>
     )
 }

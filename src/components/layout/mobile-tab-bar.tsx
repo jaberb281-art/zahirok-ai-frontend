@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { GatedLink } from "@/components/early-access/gated-link"
 import { usePathname } from "next/navigation"
 import { Compass, Library, Plus, SlidersHorizontal } from "lucide-react"
 
@@ -25,7 +25,7 @@ export function MobileTabBar() {
                     (item.href === "/create" && pathname.startsWith("/create"))
 
                 return (
-                    <Link
+                    <GatedLink
                         key={item.href}
                         href={item.href}
                         aria-label={item.label}
@@ -38,7 +38,7 @@ export function MobileTabBar() {
                             aria-hidden="true"
                         />
                         <span className="sr-only">{item.label}</span>
-                    </Link>
+                    </GatedLink>
                 )
             })}
         </nav>

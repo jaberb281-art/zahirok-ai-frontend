@@ -10,7 +10,6 @@ import {
   Headphones,
   Link2,
   Minus,
-  Music2,
   Play,
   Plus,
   Sparkles,
@@ -20,6 +19,8 @@ import {
   Volume2,
 } from "lucide-react"
 
+import { BrandLogo } from "@/components/brand-logo"
+import { GatedLink } from "@/components/early-access/gated-link"
 import { LandingPrompt } from "@/components/home/landing-prompt"
 import { DemoVideoPoster } from "@/components/media/demo-video"
 import { getDemoImage } from "@/lib/demo-images"
@@ -40,19 +41,22 @@ const marqueeItems = [
 
 const howItWorksSteps = [
   {
-    number: "01",
-    title: "Describe your sound",
+    number: "1",
+    title: "Step 1: Describe your sound",
     body: 'Type a mood, a place, or a story. "A slow Dambora melody at sunset on the Makran coast."',
+    image: "/toturial-guide/1.png",
   },
   {
-    number: "02",
-    title: "Shape the details",
+    number: "2",
+    title: "Step 2: Shape the details",
     body: "Pick your instruments — Dambora, Suroz, Doholl — choose vocal style, language, and energy.",
+    image: "/toturial-guide/2.png",
   },
   {
-    number: "03",
-    title: "Hear it come alive",
+    number: "3",
+    title: "Step 3: Hear it come alive",
     body: "Soroz generates a full song draft in seconds. Download, share, or remix it.",
+    image: "/toturial-guide/3.png",
   },
 ]
 
@@ -129,31 +133,17 @@ function LandingNavbar() {
         <Link
           href="/"
           aria-label="Soroz home"
-          className="flex min-w-0 items-center gap-2 sm:gap-2.5"
+          className="flex min-w-0 items-center"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-saffron/30 bg-saffron/10 text-saffron shadow-[0_0_28px_rgba(227,122,44,0.18)] sm:size-10">
-            <Music2 className="size-5" aria-hidden="true" />
-          </span>
-          <span className="text-lg font-black uppercase tracking-[0.14em] text-white sm:text-2xl sm:tracking-[0.18em]">
-            Soroz
-          </span>
+          <BrandLogo className="h-8 w-auto sm:h-10" />
         </Link>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href="/auth/sign-in"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-white/12 bg-black/10 px-3 text-sm font-bold text-white/88 backdrop-blur-xl transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:h-12 sm:px-5"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/auth/sign-up"
-            className="inline-flex h-10 items-center justify-center rounded-full [background:var(--gradient-brand)] px-3 text-sm font-black text-white shadow-[0_14px_36px_rgba(227,122,44,0.28)] transition hover:[background:var(--gradient-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:h-12 sm:px-6"
-          >
-            <span className="hidden sm:inline">Join Soroz for free</span>
-            <span className="sm:hidden">Join free</span>
-          </Link>
-        </div>
+        <GatedLink
+          href="/create"
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-full [background:var(--gradient-brand)] px-5 text-sm font-black text-white shadow-[0_14px_36px_rgba(227,122,44,0.28)] transition hover:[background:var(--gradient-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:h-12 sm:px-6"
+        >
+          Get Started
+        </GatedLink>
       </nav>
     </header>
   )
@@ -213,25 +203,65 @@ function InstrumentMarquee() {
 
 function HowItWorksSection() {
   return (
-    <section className="bg-[#111113] px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-6xl">
-        <SectionHeading
-          title="How Soroz works"
-          body="Three steps. No music experience needed."
-          align="center"
-        />
+    <section className="bg-[#0d0d0f] px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+      <div className="mx-auto max-w-[1600px]">
+        <div className="flex snap-x gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-5 [&::-webkit-scrollbar]:hidden">
+          <aside className="flex w-[min(70vw,220px)] shrink-0 snap-start flex-col justify-start rounded-[1.75rem] bg-saffron p-7 shadow-[0_24px_70px_rgba(227,122,44,0.22)] sm:w-[240px] sm:p-8 lg:w-[260px]">
+            <h2 className="text-3xl font-black leading-[1.08] tracking-[-0.03em] text-[#171210] sm:text-4xl">
+              How to use
+              <br />
+              Soroz
+            </h2>
+            <p className="mt-4 text-sm font-semibold leading-6 text-[#171210]/72">
+              Three steps. No music experience needed.
+            </p>
+          </aside>
 
-        <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
           {howItWorksSteps.map((step) => (
-            <article key={step.number}>
-              <p className="text-5xl font-black leading-none text-white/12 sm:text-6xl">{step.number}</p>
-              <h3 className="mt-4 text-xl font-black text-white">{step.title}</h3>
-              <p className="mt-3 text-sm font-semibold leading-6 text-white/58 sm:text-base">{step.body}</p>
-            </article>
+            <HowItWorksCard key={step.number} step={step} />
           ))}
         </div>
       </div>
     </section>
+  )
+}
+
+function HowItWorksCard({
+  step,
+}: {
+  step: (typeof howItWorksSteps)[number]
+}) {
+  return (
+    <article className="grid w-[min(92vw,720px)] shrink-0 snap-start grid-cols-1 overflow-hidden rounded-[1.75rem] bg-saffron shadow-[0_24px_70px_rgba(227,122,44,0.18)] sm:w-[760px] sm:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.9fr)] lg:w-[820px]">
+      <div className="p-4 sm:p-5 lg:p-6">
+        <div className="h-full overflow-hidden rounded-[1.25rem] border border-black/10 bg-[#111113] shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={step.image}
+            alt={step.title}
+            className="h-full min-h-[200px] w-full object-cover object-top sm:min-h-[260px]"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col px-6 pb-6 pt-1 sm:px-7 sm:py-7 sm:pl-2 lg:pr-8">
+        <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#171210] text-sm font-black text-white">
+          {step.number}
+        </span>
+        <h3 className="mt-5 text-2xl font-black leading-tight tracking-[-0.02em] text-[#171210] sm:text-[1.65rem]">
+          {step.title}
+        </h3>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[#171210]/78 sm:leading-7">
+          {step.body}
+        </p>
+        <GatedLink
+          href="/create"
+          className="mt-6 inline-flex h-11 w-fit items-center justify-center rounded-xl bg-[#2563eb] px-5 text-sm font-black text-white transition hover:bg-[#1d4ed8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2 focus-visible:ring-offset-saffron sm:mt-auto"
+        >
+          Get Started
+        </GatedLink>
+      </div>
+    </article>
   )
 }
 
@@ -251,13 +281,13 @@ function SongShowcaseSection() {
               around the world.
             </p>
           </div>
-          <Link
+          <GatedLink
             href="/feed"
             className="inline-flex h-10 shrink-0 items-center gap-1.5 self-start rounded-full border border-white/12 bg-white/[0.04] px-4 text-sm font-black text-white transition hover:border-saffron/35 hover:bg-saffron/10 sm:self-auto"
           >
             View all
             <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
+          </GatedLink>
         </div>
 
         <div className="mt-10 flex snap-x gap-3 overflow-x-auto pb-4 [scrollbar-width:none] sm:mt-12 sm:gap-3.5 [&::-webkit-scrollbar]:hidden">
@@ -337,7 +367,7 @@ function ShowcaseCard({
 
   return (
     <article className="group w-[min(62vw,168px)] shrink-0 snap-start sm:w-[180px] lg:w-[196px]">
-      <Link
+      <GatedLink
         href={`/song/${song.id}`}
         className="relative block aspect-[16/10] overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-saffron"
       >
@@ -360,16 +390,16 @@ function ShowcaseCard({
             {formatCount(song.likes)}
           </span>
         </div>
-      </Link>
+      </GatedLink>
 
       <div className="mt-2.5 px-0.5">
-        <Link
+        <GatedLink
           href={`/song/${song.id}`}
           className="block truncate text-[13px] font-black leading-snug text-white transition hover:text-saffron"
         >
           {song.title}
-        </Link>
-        <Link
+        </GatedLink>
+        <GatedLink
           href={profilePathForCreator(song.creator)}
           className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-[11px] font-semibold text-white/70 transition hover:text-saffron"
         >
@@ -380,7 +410,7 @@ function ShowcaseCard({
             {initial}
           </span>
           <span className="truncate">{song.creator}</span>
-        </Link>
+        </GatedLink>
       </div>
     </article>
   )
@@ -405,13 +435,13 @@ function DriftTeaserSection() {
           66 BPM · Dambora · Calm
         </p>
 
-        <Link
+        <GatedLink
           href="/radio"
           className="mt-8 inline-flex items-center gap-1.5 text-sm font-black text-saffron transition hover:text-white"
         >
           Open The Drift
           <ArrowRight className="size-4" aria-hidden="true" />
-        </Link>
+        </GatedLink>
       </div>
     </section>
   )
@@ -605,7 +635,7 @@ function MobileAppSection() {
           </div>
         </div>
 
-        <div className="relative mx-auto flex w-full max-w-[520px] items-end justify-center pb-4 pt-6 sm:max-w-[560px] lg:max-w-none lg:justify-end lg:pb-0">
+        <div className="relative mx-auto flex w-full max-w-[560px] items-end justify-center overflow-visible pb-4 pt-6 sm:max-w-[620px] lg:max-w-none lg:justify-end lg:pb-0">
           <div
             aria-hidden="true"
             className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(70,130,255,0.28),transparent_68%)] blur-2xl"
@@ -614,13 +644,13 @@ function MobileAppSection() {
           <img
             src="/app_png/SorozApp1.png"
             alt="Soroz mobile app create screen"
-            className="relative z-20 w-[58%] max-w-[280px] -rotate-[8deg] drop-shadow-[0_30px_60px_rgba(0,0,0,0.55)] sm:max-w-[320px]"
+            className="relative z-20 w-[52%] max-w-[260px] -rotate-[8deg] drop-shadow-[0_30px_60px_rgba(0,0,0,0.55)] sm:max-w-[300px]"
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/app_png/SorozApp2.png"
             alt="Soroz mobile app library screen"
-            className="relative z-10 -ml-[18%] w-[58%] max-w-[280px] rotate-[7deg] drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)] sm:max-w-[320px]"
+            className="relative z-10 -ml-[12%] w-[52%] max-w-[260px] rotate-[7deg] drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)] sm:max-w-[300px]"
           />
         </div>
       </div>
@@ -657,18 +687,18 @@ function FinalCtaSection() {
           Soroz track?
         </h2>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
+          <GatedLink
             href="/auth/sign-up"
             className="inline-flex h-12 w-full items-center justify-center rounded-full [background:var(--gradient-brand)] px-7 text-sm font-black text-white shadow-[0_18px_42px_rgba(227,122,44,0.28)] transition hover:[background:var(--gradient-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:w-auto"
           >
             Join Soroz for free
-          </Link>
-          <Link
+          </GatedLink>
+          <GatedLink
             href="/feed"
             className="inline-flex h-12 w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.055] px-7 text-sm font-black text-white transition hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:w-auto"
           >
             Explore the demo
-          </Link>
+          </GatedLink>
         </div>
       </div>
     </section>
@@ -684,9 +714,15 @@ function LandingFooter() {
         </p>
         <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-white/48">
           {footerLinks.map((link) => (
-            <Link key={link.label} href={link.href} className="transition hover:text-white">
-              {link.label}
-            </Link>
+            link.href === "/pricing" || link.href === "/terms" || link.href === "/privacy" ? (
+              <Link key={link.label} href={link.href} className="transition hover:text-white">
+                {link.label}
+              </Link>
+            ) : (
+              <GatedLink key={link.label} href={link.href} className="transition hover:text-white">
+                {link.label}
+              </GatedLink>
+            )
           ))}
         </nav>
       </div>

@@ -33,6 +33,12 @@ import {
 } from "lucide-react"
 
 import { usePlaySong } from "@/hooks/use-play-song"
+import {
+  LanguageSwitcher,
+  type Language,
+} from "@/components/create/language-switcher"
+import { durationOptionToSeconds, generateMusic, providerDurationToLabel } from "@/lib/music-client"
+import { useLibraryStore } from "@/stores/library-store"
 import type { GenrePreset, Instrument, Song } from "@/lib/types"
 
 // MVP: only Makkuran dialect is supported in first release
@@ -64,6 +70,7 @@ const SONG_DESCRIPTION_WARNING_LENGTH = 180
 const USER_CREDITS = 75
 const LANGUAGE_OPTIONS = ["Balochi", "Urdu", "English", "Arabic", "Brahui"] as const
 type SongLanguage = (typeof LANGUAGE_OPTIONS)[number]
+
 const RTL_LYRICS_LANGUAGES = new Set<SongLanguage>(["Balochi", "Urdu", "Arabic"])
 const LYRICS_STRUCTURE_TAGS = [
   "[Intro]",
@@ -149,6 +156,7 @@ interface GeneratedSong {
   creditsUsed: number
   variationIndex: number
   variationCount: VariationCount
+  audioUrl: string
 }
 
 interface PendingGeneration {
@@ -313,7 +321,7 @@ function getRandomPrompt(
     return pool[0]
   }
 
-  let prompt: string = pool[0]
+  let prompt: string
   do {
     prompt = pool[Math.floor(Math.random() * pool.length)]
   } while (prompt === lastPrompt)
@@ -480,6 +488,8 @@ function parseClockToSeconds(value: string): number | null {
 }
 
 function makeGeneratedSong({
+  id,
+  audioUrl,
   bpm,
   creditsUsed,
   duration,
@@ -490,9 +500,11 @@ function makeGeneratedSong({
   variationCount,
   variationIndex,
 }: {
+  id?: string
+  audioUrl: string
   bpm: number
   creditsUsed: number
-  duration: DurationOption
+  duration: DurationOption | string
   musicKey: MusicKey
   prompt: string
   lyrics: string
@@ -502,7 +514,7 @@ function makeGeneratedSong({
 }): GeneratedSong {
   const baseTitle = title || getMockTitle()
   return {
-    id: `mock-create-${Date.now()}-${variationIndex}-${Math.random().toString(36).slice(2, 8)}`,
+    id: id ?? `generated-${Date.now()}-${variationIndex}-${Math.random().toString(36).slice(2, 8)}`,
     title:
       variationCount > 1
         ? `${baseTitle} V${variationIndex}`
@@ -522,10 +534,10 @@ function makeGeneratedSong({
     creditsUsed,
     variationIndex,
     variationCount,
+    audioUrl,
   }
 }
 
-// MOCK: bridge generated song to Song for the global player store
 function toPlayerSong(song: GeneratedSong): Song {
   return {
     id: song.id,
@@ -535,9 +547,9 @@ function toPlayerSong(song: GeneratedSong): Song {
     instruments: song.instruments,
     lyrics: song.lyrics,
     status: "completed",
-    audioUrl: "/mock/audio-placeholder.mp3",
-    mp3Url: "/mock/audio-placeholder.mp3",
-    wavUrl: "/mock/audio-placeholder.wav",
+    audioUrl: song.audioUrl,
+    mp3Url: song.audioUrl,
+    wavUrl: song.audioUrl,
     isPublic: song.isPublic,
     createdAt: song.createdAt,
     duration: song.duration,
@@ -572,9 +584,12 @@ function CreatePageInner() {
   )
   const [stylePrompt, setStylePrompt] = useState(() => draft.stylePrompt ?? "")
   const [songTitle, setSongTitle] = useState(() => draft.songTitle ?? "")
-  const [selectedLanguage, setSelectedLanguage] = useState<SongLanguage>(
-    () => draft.selectedLanguage ?? "Balochi",
-  )
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = draft.selectedLanguage
+    return saved === "Balochi" ? "balochi" : "english"
+  })
+  const selectedLanguage: SongLanguage =
+    language === "balochi" ? "Balochi" : "English"
   const [selectedDuration, setSelectedDuration] = useState<DurationOption>(
     () => draft.selectedDuration ?? "2min",
   )
@@ -610,6 +625,8 @@ function CreatePageInner() {
   const [generationElapsedSeconds, setGenerationElapsedSeconds] = useState(0)
   const [activeGeneration, setActiveGeneration] = useState<PendingGeneration | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const generationAbortRef = useRef<AbortController | null>(null)
+  const generationInFlightRef = useRef(false)
   const pendingGenerationRef = useRef<PendingGeneration>({
     prompt: "",
     lyrics: "",
@@ -621,6 +638,10 @@ function CreatePageInner() {
     variationCount: 2,
     modeLabel: "Create Song",
   })
+  // Token guarding the one-time completion of a generation. React StrictMode
+  // double-invokes the progress updater, so without this the tracks would be
+  // created (and persisted) twice.
+  const completedGenerationRef = useRef<PendingGeneration | null>(null)
   const audioMenuRef = useRef<HTMLDivElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const lyricsTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -832,86 +853,40 @@ function CreatePageInner() {
     return () => window.clearInterval(elapsedTimer)
   }, [generationStartedAt, isGenerating])
 
-  // MOCK: replace with api-client call when backend is ready
   useEffect(() => {
-    function clearTimer() {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+    return () => {
+      generationAbortRef.current?.abort()
     }
+  }, [])
 
-    if (status === "idle" || status === "done") {
-      clearTimer()
-      return
+  function clearProgressTimer() {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
+  }
 
-    if (status === "queued") {
-      const t = setTimeout(() => {
-        setStatus("generating")
-        setProgress(12)
-      }, 900)
-      return () => clearTimeout(t)
-    }
+  function startProgressTimer(targetProgress = 90) {
+    clearProgressTimer()
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => (prev >= targetProgress ? prev : prev + 2))
+    }, 450)
+  }
 
-    if (status === "generating") {
-      clearTimer()
-      intervalRef.current = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 64) {
-            clearTimer()
-            setStatus("mixing")
-            return 64
-          }
-          return prev + 4
-        })
-      }, 170)
-      return clearTimer
-    }
+  async function handleCreate() {
+    if (!canCreate || generationInFlightRef.current) return
 
-    if (status === "mixing") {
-      clearTimer()
-      intervalRef.current = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearTimer()
-            setGeneratedSongs((songs) => {
-              const pending = pendingGenerationRef.current
-              const nextSongs = Array.from({ length: pending.variationCount }, (_, index) =>
-                makeGeneratedSong({
-                  bpm: pending.bpm,
-                  creditsUsed: pending.creditsUsed,
-                  duration: pending.duration,
-                  musicKey: pending.musicKey,
-                  prompt: pending.prompt,
-                  lyrics: pending.lyrics,
-                  title: pending.title,
-                  variationCount: pending.variationCount,
-                  variationIndex: index + 1,
-                }),
-              )
-
-              return [...nextSongs, ...songs]
-            })
-            setStatus("done")
-            setGenerationStartedAt(null)
-            setActiveGeneration(null)
-            return 100
-          }
-          return prev + 3
-        })
-      }, 120)
-      return clearTimer
-    }
-  }, [status])
-
-  function handleCreate() {
-    if (!canCreate) return
     const promptParts = [
       songDescription.trim(),
       stylePrompt.trim() ? `Styles: ${stylePrompt.trim()}` : "",
+      lyricsMode !== "instrumental" && lyrics.trim()
+        ? `Lyrics: ${lyrics.trim()}`
+        : "",
+      lyricsMode !== "instrumental" && !lyrics.trim() && lyricsPrompt.trim()
+        ? `Lyrics direction: ${lyricsPrompt.trim()}`
+        : "",
+      lyricsMode === "instrumental" ? "Instrumental only" : "",
       `Duration: ${selectedDuration}`,
-      `Variations: ${variationCount}`,
       `BPM: ${bpm}`,
       `Key: ${musicKey}`,
     ].filter(Boolean)
@@ -928,19 +903,110 @@ function CreatePageInner() {
       modeLabel: createMode === "Simple" ? "Create Song" : "Advanced",
     }
     pendingGenerationRef.current = pendingGeneration
+    completedGenerationRef.current = null
 
+    const abortController = new AbortController()
+    generationAbortRef.current = abortController
+    generationInFlightRef.current = true
+
+    setComposerNotice("")
     setProgress(3)
     setActiveGeneration(pendingGeneration)
     setGenerationElapsedSeconds(0)
     setGenerationStartedAt(Date.now())
     setStatus("queued")
+
+    window.setTimeout(() => {
+      setStatus("generating")
+      setProgress(12)
+      startProgressTimer(88)
+    }, 350)
+
+    try {
+      const useCustomLyrics =
+        lyricsMode === "write" && pendingGeneration.lyrics.trim().length > 0
+
+      const result = await generateMusic({
+        prompt: pendingGeneration.prompt,
+        duration: durationOptionToSeconds(pendingGeneration.duration),
+        lyrics: useCustomLyrics ? pendingGeneration.lyrics : undefined,
+        title: pendingGeneration.title || undefined,
+        tags: stylePrompt.trim() || undefined,
+        instrumental: lyricsMode === "instrumental",
+        useCustomLyrics,
+        description: songDescription.trim() || undefined,
+        bpm: pendingGeneration.bpm,
+        musicKey: pendingGeneration.musicKey,
+        language: selectedLanguage,
+        creditsCharged: pendingGeneration.creditsUsed,
+        signal: abortController.signal,
+      })
+
+      clearProgressTimer()
+
+      if (!result.success) {
+        setComposerNotice(result.error)
+        setStatus("idle")
+        setProgress(0)
+        setGenerationStartedAt(null)
+        setActiveGeneration(null)
+        return
+      }
+
+      setStatus("mixing")
+      setProgress(92)
+
+      const nextSong = makeGeneratedSong({
+        id: result.songId,
+        audioUrl: result.audioUrl,
+        bpm: pendingGeneration.bpm,
+        creditsUsed: pendingGeneration.creditsUsed,
+        duration: providerDurationToLabel(result.duration),
+        musicKey: pendingGeneration.musicKey,
+        prompt: pendingGeneration.prompt,
+        lyrics: pendingGeneration.lyrics,
+        title: result.title || pendingGeneration.title,
+        variationCount: 1,
+        variationIndex: 1,
+      })
+
+      completedGenerationRef.current = pendingGeneration
+      setGeneratedSongs((songs) => [nextSong, ...songs])
+      useLibraryStore.getState().addSongs([toPlayerSong(nextSong)])
+
+      if (pendingGeneration.variationCount > 1) {
+        setComposerNotice(
+          "Generated 1 track for this test build. Multi-variation generation will arrive in a later release.",
+        )
+      }
+
+      setStatus("done")
+      setProgress(100)
+      setGenerationStartedAt(null)
+      setActiveGeneration(null)
+    } catch (error) {
+      clearProgressTimer()
+
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setComposerNotice("Generation cancelled.")
+      } else {
+        setComposerNotice("Music generation failed. Please try again.")
+      }
+
+      setStatus("idle")
+      setProgress(0)
+      setGenerationStartedAt(null)
+      setActiveGeneration(null)
+    } finally {
+      generationInFlightRef.current = false
+      generationAbortRef.current = null
+    }
   }
 
   function handleCancelGeneration() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
+    generationAbortRef.current?.abort()
+    clearProgressTimer()
+    generationInFlightRef.current = false
     setStatus("idle")
     setProgress(0)
     setGenerationStartedAt(null)
@@ -1188,16 +1254,16 @@ function CreatePageInner() {
   }
 
   return (
-    <div className="relative overflow-x-hidden bg-[#111111] text-sand">
+    <div className="relative overflow-x-hidden bg-[#111111] text-sand lg:h-full lg:min-h-0">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_6%,rgba(227,122,44,0.14),transparent_24%),radial-gradient(circle_at_82%_10%,rgba(26,58,92,0.48),transparent_28%),linear-gradient(135deg,#141414_0%,#191716_48%,#101010_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.045] [background-image:linear-gradient(90deg,rgba(237,227,211,0.35)_1px,transparent_1px),linear-gradient(rgba(237,227,211,0.25)_1px,transparent_1px)] [background-size:36px_36px]" />
 
-      <main className="relative z-10 grid grid-cols-1 gap-3 px-3 py-3 lg:h-dvh lg:min-h-0 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)] lg:gap-0 lg:overflow-hidden lg:px-0 lg:py-0">
+      <main className="relative z-10 grid grid-cols-1 gap-3 px-3 py-3 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)] lg:gap-0 lg:overflow-hidden lg:px-0 lg:py-0">
         {/* ── LEFT PANEL ── */}
         <section className="rounded-2xl border border-sand/10 bg-[#181818]/95 shadow-[0_20px_60px_rgba(0,0,0,0.34)] lg:h-full lg:min-h-0 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:border-r lg:bg-[#171717]/92">
-          <div className="flex h-full min-h-0 flex-col overflow-x-visible p-3 pb-28 sm:p-4 sm:pb-32 lg:overflow-y-auto lg:p-5 lg:pb-6 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
+          <div className="flex h-full min-h-0 flex-col overflow-x-visible p-3 pb-4 sm:p-4 lg:overflow-y-auto lg:p-5 lg:pb-6 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
             {/* Top controls */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="inline-flex h-10 rounded-full border border-sand/10 bg-black/20 p-1">
                 {(["Simple", "Advanced"] as const).map((mode) => (
                   <button
@@ -1215,13 +1281,7 @@ function CreatePageInner() {
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                aria-label="Language: English Balochi"
-                className="inline-flex h-10 items-center rounded-full border border-sand/10 bg-sand/[0.08] px-3.5 text-xs font-black text-sand/80 transition hover:bg-sand/[0.12] hover:text-sand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron"
-              >
-                English Balochi
-              </button>
+              <LanguageSwitcher value={language} onChange={setLanguage} />
             </div>
 
             {/* Input tabs — Advanced only */}
@@ -1388,7 +1448,6 @@ function CreatePageInner() {
                 </p>
               </div>
             )}
-
 
             {/* Tab content */}
             {createMode === "Simple" ? (
@@ -1864,7 +1923,7 @@ function CreatePageInner() {
             )}
 
             {/* Bottom: progress + create */}
-            <div className="sticky bottom-[calc(var(--app-mobile-tab-bar-height)+0.75rem)] z-40 rounded-2xl border border-sand/10 bg-[#181818]/96 p-2 shadow-[0_18px_48px_rgba(0,0,0,0.38)] backdrop-blur-xl lg:bottom-0 lg:mx-0 lg:mt-auto lg:border-0 lg:bg-transparent lg:p-0 lg:pt-5 lg:shadow-none lg:backdrop-blur-none">
+            <div className="mt-4 rounded-2xl border border-sand/10 bg-[#181818]/96 p-2 sm:mt-5 lg:mt-6 lg:border-0 lg:bg-transparent lg:p-0 lg:pt-5">
               <GenerationProgress
                 status={status}
                 progress={progress}
@@ -1886,7 +1945,7 @@ function CreatePageInner() {
                       setSongDescription("")
                       setStylePrompt("")
                       setSongTitle("")
-                      setSelectedLanguage("Balochi")
+                      setLanguage("english")
                       setSelectedDuration("2min")
                       setVariationCount(2)
                       setBpm(100)
@@ -3400,7 +3459,6 @@ function VoiceInput({
     </div>
   )
 }
-
 
 function SongDescriptionPanel({
   actions,

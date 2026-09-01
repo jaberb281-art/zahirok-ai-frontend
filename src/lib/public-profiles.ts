@@ -28,7 +28,7 @@ export type PublicProfile = {
 }
 
 export const mockPublicProfiles: Record<string, PublicProfile> = {
-  chelz: {
+  chelz1: {
     displayName: "Chelz ✨💫⭐",
     handle: "@chelz1",
     avatarGradient:
@@ -105,7 +105,7 @@ export const mockPublicProfiles: Record<string, PublicProfile> = {
     likes: 912,
     followers: 41,
     following: 39,
-    tags: ["cinematic", "folk", "soroz", "suroz", "warm vocals"],
+    tags: ["cinematic", "folk", "soroz", "warm vocals"],
     songs: [
       { title: "Desert Signal", version: "v5", plays: 72, style: "Soroz", coverImage: "/covers/desert-pulse.png" },
       { title: "Suroz Amber", version: "v4.5", plays: 45, style: "Folk", coverImage: "/covers/makran-evening.png" },
@@ -120,7 +120,7 @@ const creatorProfileHandles: Record<string, string> = {
   "azim dashti": "meeralgwadar",
   "bibi hani": "shahbaloch",
   "dil nawaz": "meeralgwadar",
-  "distinctinstructor3079": "chelz",
+  "distinctinstructor3079": "chelz1",
   "harley maxwell": "jamesbakian",
   "jalal rakhshani": "jamesbakian",
   "karimi band": "shahbaloch",
@@ -128,11 +128,41 @@ const creatorProfileHandles: Record<string, string> = {
   "mahrang360": "meeralgwadar",
   "mahzad baloch": "meeralgwadar",
   "meeral gwadar": "meeralgwadar",
-  "noor dehwar": "chelz",
+  "noor dehwar": "chelz1",
   "rostam kech": "jamesbakian",
   "ruvin dashti": "shahbaloch",
   "shah baloch": "shahbaloch",
-  "zareena sajid": "chelz",
+  "zareena sajid": "chelz1",
+}
+
+const FALLBACK_AVATAR_GRADIENTS = [
+  "radial-gradient(circle_at_30%_30%,#ede3d3 0%,#e37a2c 36%,#1a3a5c 100%)",
+  "radial-gradient(circle_at_34%_28%,#f6b13a 0%,#b73e1f 42%,#1a3a5c 100%)",
+  "radial-gradient(circle_at_28%_32%,#ede3d3 0%,#e37a2c 38%,#b73e1f 100%)",
+  "radial-gradient(circle_at_32%_26%,#d94f35 0%,#e37a2c 40%,#0f3440 100%)",
+] as const
+
+const FALLBACK_BANNER_GRADIENTS = [
+  "linear-gradient(155deg,rgba(227,122,44,0.88),rgba(183,62,31,0.72) 45%,rgba(9,9,9,0.98))",
+  "linear-gradient(150deg,rgba(26,58,92,0.92),rgba(227,122,44,0.68) 48%,rgba(9,9,9,0.98))",
+  "linear-gradient(160deg,rgba(183,62,31,0.9),rgba(227,122,44,0.76) 52%,rgba(15,15,18,0.98))",
+  "linear-gradient(155deg,rgba(227,122,44,0.82),rgba(26,58,92,0.58) 44%,rgba(9,9,9,0.98))",
+] as const
+
+function hashHandle(value: string): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return hash
+}
+
+function fallbackGradientsForHandle(handle: string) {
+  const index = hashHandle(handle) % FALLBACK_AVATAR_GRADIENTS.length
+  return {
+    avatarGradient: FALLBACK_AVATAR_GRADIENTS[index],
+    bannerGradient: FALLBACK_BANNER_GRADIENTS[index],
+  }
 }
 
 export function getPublicProfile(handle: string): PublicProfile {
@@ -159,24 +189,20 @@ function createFallbackPublicProfile(handle: string): PublicProfile {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ") || "Soroz Creator"
 
+  const { avatarGradient, bannerGradient } = fallbackGradientsForHandle(handle)
+
   return {
     displayName,
     handle: `@${handle || "creator"}`,
-    avatarGradient:
-      "radial-gradient(circle_at_30%_30%,#ede3d3 0%,#e37a2c 36%,#1a3a5c 100%)",
-    bannerGradient:
-      "linear-gradient(155deg,rgba(227,122,44,0.92),rgba(183,62,31,0.74) 45%,rgba(9,9,9,0.98))",
-    plays: "12K",
-    likes: 128,
-    followers: 18,
-    following: 24,
-    tags: ["soroz", "balochi", "folk", "raw vocals"],
-    songs: [
-      { title: `${displayName} Soroz`, version: "v5", plays: 18, style: "Soroz", coverImage: "/covers/makran-evening.png" },
-      { title: "Coastal Draft", version: "v4.5", plays: 11, style: "Liko", coverImage: "/covers/coastal-lullaby.png" },
-      { title: "Damboora Pulse", version: "v5", plays: 9, style: "Folk", coverImage: "/covers/desert-pulse.png" },
-    ],
-    playlists: [{ title: `${displayName} Picks`, count: "6 songs", coverImage: "/covers/turbat-night.png" }],
-    bio: "A Soroz community creator exploring Balochi melodies and modern production.",
+    avatarGradient,
+    bannerGradient,
+    plays: "0",
+    likes: 0,
+    followers: 0,
+    following: 0,
+    tags: ["soroz", "balochi", "folk"],
+    songs: [],
+    playlists: [],
+    bio: "",
   }
 }

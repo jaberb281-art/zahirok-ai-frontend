@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
@@ -12,7 +12,6 @@ import {
     Heart,
     Headphones,
     Lock,
-    MessageCircle,
     Music2,
     Pause,
     Play,
@@ -24,6 +23,13 @@ import {
 
 import { usePlaySong } from "@/hooks/use-play-song"
 import { AudioWaveform } from "@/components/ui/audio-waveform"
+import { CommentsThread } from "@/components/songs/comments-thread"
+import {
+    fetchSongDetail,
+    isPersistedSongId,
+    type SongDetailResponse,
+} from "@/lib/library-client"
+import { providerDurationToLabel } from "@/lib/music-client"
 import {
     formatCount,
     getFeedSongs,
@@ -32,11 +38,54 @@ import {
     type MockSong,
 } from "@/lib/mock-songs"
 import { profilePathForCreator } from "@/lib/public-profiles"
+import type { Song } from "@/lib/types"
+import { useLibraryHydrated, useLibraryStore } from "@/stores/library-store"
+
+// Adapt a player Song from the library store to the MockSong shape this page
+// renders, supplying defaults for the fields generated tracks don't carry.
+function librarySongToMockSong(song: Song): MockSong {
+    return {
+        ...song,
+        dialect: "Makkuran",
+        creator: "You",
+        comments: 0,
+        gradient:
+            "linear-gradient(135deg,rgba(227,122,44,0.6) 0%,rgba(183,62,31,0.35) 60%,rgba(26,22,18,0.95) 100%)",
+        coverClass: "",
+    }
+}
+
+function persistedSongToMockSong(detail: SongDetailResponse): MockSong {
+    const audioUrl = detail.audioUrl
+    return {
+        id: detail.id,
+        title: detail.title,
+        prompt: detail.prompt,
+        genrePreset: "Custom Prompt",
+        instruments: ["Suroz"],
+        lyrics: detail.lyrics,
+        status: "completed",
+        audioUrl,
+        mp3Url: audioUrl,
+        wavUrl: audioUrl,
+        isPublic: detail.visibility === "public",
+        createdAt: detail.createdAt,
+        duration: providerDurationToLabel(detail.duration ?? undefined),
+        plays: 0,
+        likes: 0,
+        remixes: 0,
+        dialect: "Makkuran",
+        creator: "You",
+        comments: 0,
+        gradient:
+            "linear-gradient(135deg,rgba(227,122,44,0.6) 0%,rgba(183,62,31,0.35) 60%,rgba(26,22,18,0.95) 100%)",
+        coverClass: "",
+    }
+}
 
 type DetailTab = "lyrics" | "prompt" | "details"
 
 const FEED_SONGS = getFeedSongs()
-const REACTIONS = ["🔥", "😍", "😱", "👏", "👍", "😎"] as const
 
 function getIdFromParams(value: string | string[] | undefined) {
     if (Array.isArray(value)) return value[0] ?? ""
@@ -76,12 +125,52 @@ function formatCreatedAt(value: string) {
 export default function SongDetailPage() {
     const params = useParams()
     const id = getIdFromParams(params.id)
-    const song = getMockSongById(id)
+    const hydrated = useLibraryHydrated()
+    const storeSong = useLibraryStore((state) =>
+        state.songs.find((item) => item.id === id),
+    )
+    const [fetchedSong, setFetchedSong] = useState<MockSong | null>(null)
+    const [fetchState, setFetchState] = useState<"loading" | "done">(() =>
+        isPersistedSongId(id) ? "loading" : "done",
+    )
+    const song =
+        getMockSongById(id) ??
+        fetchedSong ??
+        (storeSong ? librarySongToMockSong(storeSong) : undefined)
     const [activeTab, setActiveTab] = useState<DetailTab>("lyrics")
     const [liked, setLiked] = useState(false)
     const [saved, setSaved] = useState(false)
     const [message, setMessage] = useState("")
     const { playSong, isCurrentSong, isPlaying } = usePlaySong()
+
+    useEffect(() => {
+        if (!isPersistedSongId(id)) {
+            return
+        }
+
+        let cancelled = false
+
+        void fetchSongDetail(id)
+            .then((detail) => {
+                if (!cancelled) {
+                    setFetchedSong(persistedSongToMockSong(detail))
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setFetchedSong(null)
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setFetchState("done")
+                }
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [id])
 
     const relatedSongs = useMemo(() => (song ? pickRelatedSongs(song) : []), [song])
     const queue = useMemo(() => {
@@ -96,6 +185,9 @@ export default function SongDetailPage() {
     }, [song])
 
     if (!song) {
+        if (isPersistedSongId(id) && fetchState === "loading") return null
+        // A store-backed track may still be rehydrating; wait before showing 404.
+        if (!hydrated && !isPersistedSongId(id)) return null
         return <SongNotFound />
     }
 
@@ -307,7 +399,11 @@ export default function SongDetailPage() {
                     </div>
 
                     <aside className="grid min-w-0 gap-5">
-                        <CommentsPanel />
+                        <section className="rounded-[1.5rem] border border-sand/12 bg-sand/[0.07] p-3 shadow-[0_22px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
+                            <div className="rounded-[1.15rem] border border-sand/10 bg-[#111215]/72 p-4">
+                                <CommentsThread songId={song.id} className="max-h-[28rem]" />
+                            </div>
+                        </section>
                         <div className="rounded-[1.5rem] border border-sand/12 bg-sand/[0.07] p-3 shadow-[0_22px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
                             <div className="rounded-[1.15rem] border border-sand/10 bg-[#111215]/72 p-4">
                                 <div className="flex items-center gap-2">
@@ -470,44 +566,6 @@ function DetailCard({ label, value }: { label: string; value: string }) {
     )
 }
 
-function CommentsPanel() {
-    return (
-        <section className="rounded-[1.5rem] border border-sand/12 bg-sand/[0.07] p-3 shadow-[0_22px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
-            <div className="rounded-[1.15rem] border border-sand/10 bg-[#111215]/72 p-4">
-                <div className="flex items-center gap-2">
-                    <MessageCircle className="size-4 text-saffron" aria-hidden="true" />
-                    <h2 className="text-lg font-black text-sand">Comments</h2>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {REACTIONS.map((reaction) => (
-                        <button
-                            key={reaction}
-                            type="button"
-                            aria-label={`React with ${reaction}`}
-                            className="flex size-11 items-center justify-center rounded-full border border-sand/10 bg-sand/[0.07] text-xl transition hover:border-saffron/35 hover:bg-saffron/10"
-                        >
-                            {reaction}
-                        </button>
-                    ))}
-                </div>
-                <label className="mt-4 block">
-                    <span className="sr-only">Write a comment</span>
-                    <input
-                        placeholder="Write a comment"
-                        className="h-12 w-full rounded-full border border-sand/12 bg-sand/[0.07] px-4 text-sm font-bold text-sand outline-none transition placeholder:text-sand/42 focus:border-saffron/45 focus:bg-sand/10"
-                    />
-                </label>
-                <div className="mt-6 rounded-2xl border border-sand/10 bg-[#08080a]/42 px-4 py-8 text-center">
-                    <p className="text-xl font-black text-sand">No comments yet</p>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-sand/48">
-                        Be the first to show your love for this song
-                    </p>
-                </div>
-            </div>
-        </section>
-    )
-}
-
 function RelatedSongCard({ song, queue }: { song: MockSong; queue: ReturnType<typeof toPlayerSong>[] }) {
     const { playSong, isCurrentSong, isPlaying } = usePlaySong()
     const playerSong = toPlayerSong(song)
@@ -522,19 +580,24 @@ function RelatedSongCard({ song, queue }: { song: MockSong; queue: ReturnType<ty
             >
                 <CoverArtwork song={song} size="card" />
             </Link>
-            <Link
-                href={`/song/${song.id}`}
-                className="min-w-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
-            >
-                <h3 className="truncate text-sm font-black text-sand transition hover:text-saffron">
+            <div className="min-w-0">
+                <Link
+                    href={`/song/${song.id}`}
+                    className="block truncate text-sm font-black text-sand transition hover:text-saffron focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+                >
                     {song.title}
-                </h3>
-                <p className="mt-1 truncate text-xs font-bold text-sand/48">{song.creator}</p>
+                </Link>
+                <Link
+                    href={profilePathForCreator(song.creator)}
+                    className="mt-1 inline-block truncate text-xs font-bold text-sand/48 transition hover:text-saffron focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-saffron"
+                >
+                    {song.creator}
+                </Link>
                 <p className="mt-1 flex items-center gap-2 text-[11px] font-bold text-sand/36">
                     <span>{formatCount(song.plays)} plays</span>
                     <span>{song.duration}</span>
                 </p>
-            </Link>
+            </div>
             <button
                 type="button"
                 onClick={() => playSong(playerSong, queue)}

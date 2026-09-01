@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   AudioWaveform,
   Clapperboard,
@@ -15,6 +14,9 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react"
+
+import { useEarlyAccess } from "@/components/early-access/early-access-provider"
+import { isLaunchModeEnabled } from "@/lib/launch-mode"
 
 const PLACEHOLDER = "What kind of music do you want to create?"
 
@@ -31,10 +33,11 @@ const GENRE_TAGS: { label: string; icon: LucideIcon; prompt: string }[] = [
 ]
 
 export function LandingPrompt() {
-  const router = useRouter()
+  const { openEarlyAccess } = useEarlyAccess()
   const [prompt, setPrompt] = useState("")
   const [note, setNote] = useState("")
   const [activeGenre, setActiveGenre] = useState<string | null>(null)
+  const launchMode = isLaunchModeEnabled()
 
   function goCreate(nextPrompt?: string) {
     const trimmed = (nextPrompt ?? prompt).trim()
@@ -42,8 +45,12 @@ export function LandingPrompt() {
       setNote("Describe a song idea first.")
       return
     }
+
     setNote("")
-    router.push(`/create?prompt=${encodeURIComponent(trimmed)}`)
+    if (launchMode) {
+      openEarlyAccess()
+      return
+    }
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -123,7 +130,11 @@ export function LandingPrompt() {
         })}
         <button
           type="button"
-          onClick={() => router.push("/create")}
+          onClick={() => {
+            if (launchMode) {
+              openEarlyAccess()
+            }
+          }}
           className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-bold text-white/70 transition hover:border-white/18 hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron sm:h-10 sm:px-3.5 sm:text-sm"
         >
           <MoreHorizontal className="size-3.5 text-[#e37a8c]" aria-hidden="true" />

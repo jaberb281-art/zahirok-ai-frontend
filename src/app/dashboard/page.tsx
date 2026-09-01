@@ -525,6 +525,15 @@ function formatRelativeDate(isoString: string): string {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+// Locale- and timezone-independent (UTC components) so the server and client
+// render an identical string — `Intl.DateTimeFormat("en", …)` resolved to
+// different variants on Node vs the browser and caused a hydration mismatch.
+function formatCreatedAtTitle(isoString: string): string {
+    const date = new Date(isoString)
+    const pad = (value: number) => value.toString().padStart(2, "0")
+    return `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()}, ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
+}
+
 function getLocalGreeting() {
     const hour = new Date().getHours()
 
@@ -1398,7 +1407,7 @@ function RecentWorkTrack({
                 <span className="shrink-0 text-xs font-black tabular-nums text-sand/45">
                     {item.duration === "draft" ? "draft" : item.duration}
                 </span>
-                <span className="shrink-0 text-xs font-semibold text-sand/32" title={new Date(item.createdAt).toLocaleString()}>
+                <span className="shrink-0 text-xs font-semibold text-sand/32" title={formatCreatedAtTitle(item.createdAt)}>
                     {formatRelativeDate(item.createdAt)}
                 </span>
             </span>

@@ -6,6 +6,7 @@ import type {
   GenerationStage,
   GenerationStatusResponse,
   LibraryResponse,
+  SongComment,
   SongDetailResponse,
   VoiceDonationRequest,
   VoiceDonationResponse,
@@ -33,6 +34,14 @@ const MOCK_COMMENTS = [
     createdAt: "2026-05-23T12:15:00Z",
   },
 ]
+
+/**
+ * Mock comments for a song, rebased to the given id. Shared (sync) source for
+ * the comments UI; the async getSongById above uses the same MOCK_COMMENTS.
+ */
+export function getMockComments(songId: string): SongComment[] {
+  return MOCK_COMMENTS.map((comment) => ({ ...comment, songId }))
+}
 
 const wait = (ms: number) =>
   new Promise((resolve) => {
